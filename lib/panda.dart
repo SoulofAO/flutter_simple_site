@@ -2,19 +2,22 @@ import 'package:flutter/material.dart';
 import 'dart:math';
 
 class PandaImagePage extends StatefulWidget {
+  const PandaImagePage({Key? key}) : super(key: key);
+
   @override
-  _PandaImagePageState createState() => _PandaImagePageState();
+  PandaImagePageState createState() => PandaImagePageState();
 }
-class _PandaImagePageState extends State<PandaImagePage>
+class PandaImagePageState extends State<PandaImagePage>
     with SingleTickerProviderStateMixin {
+
   late AnimationController _controller;
   double _x = 0;
   double _y = 0;
   double _dx = 2; // Скорость по X
   double _dy = 2; // Скорость по Y
   final double _imageSize = 200; // Размер изображения
-  final String image =
-      'https://cdn.pixabay.com/photo/2023/08/05/15/42/panda-8171354_1280.jpg';
+  List<String> images = ['http://localhost:5000/assets/Panda.jpg','http://localhost:5000/assets/Capibara.jpg' ];
+  late String image;
   double _opacity = 1.0; // Начальная прозрачность
 
   @override
@@ -53,9 +56,18 @@ class _PandaImagePageState extends State<PandaImagePage>
     super.dispose();
   }
 
+  void selectRandomImage() {
+    final random = Random();
+    setState(() {
+      image = images [random.nextInt(images.length)];
+    });
+  }
+
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    selectRandomImage();
     final imageProvider = NetworkImage(image);
     precacheImage(imageProvider, context);
   }

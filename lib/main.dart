@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert'; // Добавить этот импорт
 import 'package:audioplayers/audioplayers.dart';
+import 'package:animated_background/animated_background.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'panda.dart';
 import 'dart:async';
 
@@ -28,7 +30,7 @@ class HabitHomePage extends StatefulWidget {
   State<HabitHomePage> createState() => _HabitHomePageState();
 }
 
-class _HabitHomePageState extends State<HabitHomePage> {
+class _HabitHomePageState extends State<HabitHomePage> with TickerProviderStateMixin {
 
   final List<String> defaultHabits = [
     "Выпей стакан воды",
@@ -42,6 +44,7 @@ class _HabitHomePageState extends State<HabitHomePage> {
 
   late String todayHabit;
   late String lastHabit;
+  final GlobalKey<PandaImagePageState> _pandaKey = GlobalKey();
   int combo = 0;
   String today = DateTime.now().toLocal().toString().split(' ')[0];
   String? lastDate;
@@ -125,6 +128,7 @@ class _HabitHomePageState extends State<HabitHomePage> {
   }
   void _markDone() {
     final yesterday = DateTime.now().subtract(const Duration(days: 1)).toString().split(' ')[0];
+    _playCompleteSound();
     setState(() {
       combo += 1;
       alreadyDone = true;
@@ -150,30 +154,41 @@ class _HabitHomePageState extends State<HabitHomePage> {
     );
   }
 
-  void _stopFirstReward() {
+void _stopFirstReward() {
     _audioPlayer.stop();
     setState(() {
       isPlayFirstReward = false;
     });
   }
 
-  void _playFirstReward() {
-    _audioPlayer.setSource(AssetSource('M:\\FlutterSimpleSite\\flutter_simple_site\\assets\\HeraldOfDarkness.mp3')).then((value)
-    {
-      _audioPlayer.play(AssetSource('M:\\FlutterSimpleSite\\flutter_simple_site\\assets\\HeraldOfDarkness.mp3'));
-    });
-    setState(() {
-      isPlayFirstReward = true;
-      combo = combo - 3;
-    });
-    _saveAll();
-    Timer(Duration(seconds: 20), _stopFirstReward);
+  Future<void> _playFirstReward() async {
+    try {
+      await _audioPlayer.setSource(UrlSource('http://localhost:5000/assets/HeraldOfDarkness.mp3'));
+      await _audioPlayer.play(UrlSource('http://localhost:5000/assets/HeraldOfDarkness.mp3'));
+      setState(() {
+        isPlayFirstReward = true;
+        combo = combo - 3;
+      });
+      _saveAll();
+      Timer(Duration(seconds: 55), _stopFirstReward);
+    } catch (e) {
+      print("Ошибка воспроизведения: $e");
+    }
   }
 
   void _stopSecondReward() {
     setState(() {
       isPlaySecondReward = false;
     });
+  }
+
+    Future<void> _playCompleteSound() async {
+    try {
+      await _audioPlayer.setSource(UrlSource('http://localhost:5000/assets/Reward.mp3'));
+      await _audioPlayer.play(UrlSource('http://localhost:5000/assets/Reward.mp3'));
+    } catch (e) {
+      print("Ошибка воспроизведения: $e");
+    }
   }
 
   void _playSecondReward() {
@@ -183,6 +198,7 @@ class _HabitHomePageState extends State<HabitHomePage> {
     });
     _saveAll();
     Timer(Duration(seconds: 20), _stopSecondReward);
+    _pandaKey.currentState?.selectRandomImage();
   }
 
 
@@ -239,15 +255,30 @@ Widget build(BuildContext context) {
               allowMultiple = value;
             });
           },
-        )
+        ),
       ],
     ),
     body: Stack(
       children: [
         Opacity(
           opacity: isPlaySecondReward ? 1.0 : 0.0,
-          child: PandaImagePage(),
+          child: PandaImagePage(key: _pandaKey),
         ),
+        AnimatedBackground(
+            behaviour: RandomParticleBehaviour(
+              options: ParticleOptions(
+                spawnMinSpeed: 10.0,
+                spawnMaxSpeed: 50.0,
+                particleCount: isPlayFirstReward ? 100 : 0, // Частицы только при воспроизведении
+                baseColor: Colors.redAccent,
+                spawnOpacity: 0.1,
+                opacityChangeRate: 0.25,
+              ),
+            ),
+            vsync: this,
+            child: Container(),
+          ),
+          // Пульсирующий эффект
         Center(
           child: Padding(
             padding: const EdgeInsets.all(24.0),
@@ -279,13 +310,13 @@ Widget build(BuildContext context) {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     IconButton(
-                      icon: Icon(Icons.star, color: (combo < 3 ? Colors.grey : Colors.yellow), size: 40),
+                      icon: Icon(Icons.star, color: isPlayFirstReward ? Colors.green : (combo < 3 ? Colors.grey : Colors.yellow), size: 40),
                       onPressed: isPlayFirstReward ? _stopFirstReward : combo >= 3 ? _playFirstReward : null,
                     ),
                     const SizedBox(width: 16),
                     IconButton(
-                      icon: Icon(Icons.access_alarm, color: (combo < 5 ? Colors.grey : Colors.blue), size: 40),
-                      onPressed: isPlayFirstReward ? _stopSecondReward : combo >= 5 ? _playSecondReward : null,
+                      icon: Icon(Icons.access_alarm, color: isPlaySecondReward ? Colors.green :(combo < 5 ? Colors.grey : Colors.blue), size: 40),
+                      onPressed: isPlaySecondReward ? _stopSecondReward : combo >= 5 ? _playSecondReward : null,
                     ),
                   ],
                 ),
